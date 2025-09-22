@@ -36,8 +36,25 @@ function generateConversationHTML(
   messages: Message[],
   user: User
 ): string {
-  const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-  const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
+  // Lógica para processar externalParticipantIdentifier
+  const identifier = conversation.externalParticipantIdentifier || '';
+  let name = '';
+  let phone = '';
+  
+  if (identifier.includes(';')) {
+    // Formato: "Nome;5511967241512"
+    const parts = identifier.split(';');
+    name = parts[0]?.trim() || '';
+    phone = parts[1]?.trim() || '';
+  } else {
+    // Formato: "5511967241512" (apenas número)
+    phone = identifier.trim();
+  }
+  
+  // Formatar telefone se existir
+  const formattedPhone = phone && phone.length >= 11 
+    ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}`
+    : phone;
   
   // Ordenar mensagens por data
   const sortedMessages = [...messages].sort((a, b) => 
@@ -194,7 +211,7 @@ function generateConversationHTML(
     <body>
       <div class="header">
         <h1>Relatório de Conversa</h1>
-        <h2>${formattedPhone} - ${name}</h2>
+        <h2>${formattedPhone || phone || 'Cliente'}${name ? ` - ${name}` : ''}</h2>
         <h3>Sistema SETRA</h3>
       </div>
 
@@ -206,11 +223,11 @@ function generateConversationHTML(
           </div>
           <div class="info-item">
             <div class="info-label">Participante</div>
-            <div class="info-value">${name}</div>
+            <div class="info-value">${name || 'Cliente'}</div>
           </div>
           <div class="info-item">
             <div class="info-label">Telefone</div>
-            <div class="info-value">${formattedPhone}</div>
+            <div class="info-value">${formattedPhone || phone || 'N/A'}</div>
           </div>
           <div class="info-item">
             <div class="info-label">Status</div>
@@ -322,10 +339,27 @@ export function exportConversationAsPDF(
   const url = URL.createObjectURL(blob);
   
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-  const formattedPhone = phone ? `+55-${phone.slice(2, 4)}-${phone.slice(4, 9)}-${phone.slice(9)}` : '';
-  const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
-  const fileName = `Relatorio-Conversa-${formattedPhone}-${cleanName}-${timestamp}.pdf`;
+  
+  // Lógica para processar externalParticipantIdentifier
+  const identifier = conversation.externalParticipantIdentifier || '';
+  let name = '';
+  let phone = '';
+  
+  if (identifier.includes(';')) {
+    // Formato: "Nome;5511967241512"
+    const parts = identifier.split(';');
+    name = parts[0]?.trim() || '';
+    phone = parts[1]?.trim() || '';
+  } else {
+    // Formato: "5511967241512" (apenas número)
+    phone = identifier.trim();
+  }
+  
+  const formattedPhone = phone && phone.length >= 11 
+    ? `+55-${phone.slice(2, 4)}-${phone.slice(4, 9)}-${phone.slice(9)}`
+    : phone;
+  const cleanName = (name || 'Cliente').replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+  const fileName = `Relatorio-Conversa-${formattedPhone || phone || 'Cliente'}-${cleanName}-${timestamp}.pdf`;
   
   // Criar link para download
   const a = document.createElement('a');
@@ -371,8 +405,19 @@ export function exportConversationAsHTML(
   const url = URL.createObjectURL(blob);
   
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-  const [name] = conversation.externalParticipantIdentifier.split(';');
-  const fileName = `conversa-${name.replace(/\s+/g, '-')}-${timestamp}.html`;
+  
+  // Lógica para processar externalParticipantIdentifier
+  const identifier = conversation.externalParticipantIdentifier || '';
+  let name = '';
+  
+  if (identifier.includes(';')) {
+    // Formato: "Nome;5511967241512"
+    const parts = identifier.split(';');
+    name = parts[0]?.trim() || '';
+  }
+  
+  const cleanName = (name || 'Cliente').replace(/\s+/g, '-');
+  const fileName = `conversa-${cleanName}-${timestamp}.html`;
   
   const a = document.createElement('a');
   a.href = url;
@@ -391,8 +436,24 @@ function generateMultipleConversationsHTML(
   user: User
 ): string {
   const conversationsHTML = conversations.map((conv, index) => {
-    const [name, phone] = conv.externalParticipantIdentifier.split(';');
-    const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
+    // Lógica para processar externalParticipantIdentifier
+    const identifier = conv.externalParticipantIdentifier || '';
+    let name = '';
+    let phone = '';
+    
+    if (identifier.includes(';')) {
+      // Formato: "Nome;5511967241512"
+      const parts = identifier.split(';');
+      name = parts[0]?.trim() || '';
+      phone = parts[1]?.trim() || '';
+    } else {
+      // Formato: "5511967241512" (apenas número)
+      phone = identifier.trim();
+    }
+    
+    const formattedPhone = phone && phone.length >= 11 
+      ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}`
+      : phone;
     
     return `
       <div class="conversation-item" style="

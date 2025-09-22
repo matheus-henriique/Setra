@@ -105,12 +105,32 @@ export function MessageView({
               <div className="flex items-center gap-2">
                 <h2 className="font-semibold text-base md:text-lg">
                   {conversation?.externalParticipantIdentifier ? (() => {
-                    const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-                    const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
+                    // Lógica para processar externalParticipantIdentifier
+                    const identifier = conversation.externalParticipantIdentifier || '';
+                    let name = '';
+                    let phone = '';
+                    
+                    if (identifier.includes(';')) {
+                      // Formato: "Nome;5511967241512"
+                      const parts = identifier.split(';');
+                      name = parts[0]?.trim() || '';
+                      phone = parts[1]?.trim() || '';
+                    } else {
+                      // Formato: "5511967241512" (apenas número)
+                      phone = identifier.trim();
+                    }
+                    
+                    // Formatar telefone se existir
+                    const formattedPhone = phone && phone.length >= 11 
+                      ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}`
+                      : phone;
+                    
                     return (
                       <span>
-                        <span className="font-semibold">{formattedPhone}</span>
-                        <span className="text-sm font-medium text-muted-foreground ml-2">- {name}</span>
+                        <span className="font-semibold">{formattedPhone || phone || 'Cliente'}</span>
+                        {name && (
+                          <span className="text-sm font-medium text-muted-foreground ml-2">- {name}</span>
+                        )}
                       </span>
                     );
                   })() : 'Conversa'}

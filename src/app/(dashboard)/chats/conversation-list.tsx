@@ -43,8 +43,29 @@ export function ConversationList({
         <ScrollArea className="h-full w-full">
           <div className="flex flex-col gap-2 p-2 w-full">
             {conversations?.map((convo: any) => {
-              const [name, phone] = convo.externalParticipantIdentifier.split(';');
-              const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
+              // Lógica para processar externalParticipantIdentifier
+              const identifier = convo.externalParticipantIdentifier || '';
+              let name = '';
+              let phone = '';
+              
+              if (identifier.includes(';')) {
+                // Formato: "Nome;5511967241512"
+                const parts = identifier.split(';');
+                name = parts[0]?.trim() || '';
+                phone = parts[1]?.trim() || '';
+              } else {
+                // Formato: "5511967241512" (apenas número)
+                phone = identifier.trim();
+              }
+              
+              // Formatar telefone se existir
+              const formattedPhone = phone && phone.length >= 11 
+                ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}`
+                : phone;
+              
+              // Determinar o que exibir (prioridade: nome > telefone formatado > telefone original)
+              const displayText = name || formattedPhone || phone || 'Cliente';
+              
               const isSelected = selectedConversationId === convo.id;
               
               return (
@@ -67,7 +88,7 @@ export function ConversationList({
                       <div className="flex-1 min-w-0 w-full">
                         <div className="flex flex-col gap-1 mb-1 w-full">
                           <h3 className="font-semibold text-xs truncate w-full">
-                            {formattedPhone}
+                            {displayText}
                           </h3>
                         </div>
                         
