@@ -3,7 +3,6 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { Spinner } from '@/components/ui/spinner';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/uth-context';
@@ -14,6 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Download, MessageSquare, User, Bot } from 'lucide-react';
+import { ChatLoadingWrapper } from '@/components/features/chat';
 
 async function fetchMessages(conversationId: string) {
   return api(`/conversations/${conversationId}/messages`);
@@ -103,172 +103,134 @@ export function MessageView({
     );
   }
 
-  if (isLoading) {
-    return <div className="p-8 text-center"><Spinner /></div>;
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-sm md:text-base">
-            {conversation?.externalParticipantIdentifier ? (() => {
-              const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-              const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
-              return formattedPhone;
-            })() : 'Conversa'}
-          </h2>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-destructive">
-            <p>Erro ao carregar mensagens</p>
-            <p className="text-xs mt-2">Tente recarregar a página</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!messages || messages.length === 0) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="p-4 border-b">
-          <h2 className="font-semibold text-base md:text-lg">
-            {conversation?.externalParticipantIdentifier ? (() => {
-              const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-              const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
-              return formattedPhone;
-            })() : 'Conversa'}
-          </h2>
-        </div>
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center text-muted-foreground">
-            <p>Nenhuma mensagem encontrada</p>
-            <p className="text-xs mt-2">As mensagens aparecerão aqui quando forem enviadas</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full max-h-screen">
-      {/* Cabeçalho da Conversa */}
-      <div className="p-4 border-b flex-shrink-0 bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {onBackToList && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onBackToList}
-                className="p-1 h-8 w-8 hover:bg-primary/10"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-            )}
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-base md:text-lg">
-                {conversation?.externalParticipantIdentifier ? (() => {
-                  const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-                  const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
-                  return (
-                    <span>
-                      <span className="font-semibold">{formattedPhone}</span>
-                      <span className="text-sm font-medium text-muted-foreground ml-2">- {name}</span>
-                    </span>
-                  );
-                })() : 'Conversa'}
-              </h2>
-            </div>
-          </div>
-          
-          {conversationId && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleExportConversation}
-                    className="p-1 h-8 w-8"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent className="bg-black text-white border-gray-600">
-                  <p>Exportar conversa para CSV</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-        </div>
-      </div>
-
-      {/* Área das Mensagens com Scroll */}
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full p-4">
-          <div className="space-y-4">
-            {messages?.map((message: any) => (
-              <div key={message.id} className={cn('flex items-end gap-2', message.source === 'OPERATOR' ? 'justify-end' : 'justify-start')}>
-                {/* Avatar do Contato Externo */}
-                {message.source === 'EXTERNAL' && (
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback>C</AvatarFallback>
-                  </Avatar>
-                )}
-
-                {/* Balão da Mensagem */}
-                <div
-                  className={cn('max-w-xs rounded-lg p-3 text-sm',
-                    message.source === 'OPERATOR'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  )}
+    <ChatLoadingWrapper
+      isLoading={isLoading}
+      error={error}
+      isEmpty={!messages || messages.length === 0}
+      type="messages"
+      className="h-full"
+      errorMessage="Erro ao carregar mensagens. Tente recarregar a página."
+      emptyMessage="As mensagens aparecerão aqui quando forem enviadas"
+    >
+      <div className="flex flex-col h-full max-h-screen">
+        {/* Cabeçalho da Conversa */}
+        <div className="p-4 border-b flex-shrink-0 bg-card/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {onBackToList && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onBackToList}
+                  className="p-1 h-8 w-8 hover:bg-primary/10"
                 >
-                  <div className="flex items-end justify-between gap-2">
-                    <div className="flex-1">
-                      {message.content}
-                    </div>
-                    <div className="flex items-center text-xs whitespace-nowrap">
-                      <span className={cn(
-                        message.source === 'OPERATOR'
-                          ? 'text-primary-foreground/70'
-                          : 'text-muted-foreground'
-                      )}>
-                        {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              )}
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-base md:text-lg">
+                  {conversation?.externalParticipantIdentifier ? (() => {
+                    const [name, phone] = conversation.externalParticipantIdentifier.split(';');
+                    const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
+                    return (
+                      <span>
+                        <span className="font-semibold">{formattedPhone}</span>
+                        <span className="text-sm font-medium text-muted-foreground ml-2">- {name}</span>
                       </span>
+                    );
+                  })() : 'Conversa'}
+                </h2>
+              </div>
+            </div>
+            
+            {conversationId && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleExportConversation}
+                      className="p-1 h-8 w-8"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent className="bg-black text-white border-gray-600">
+                    <p>Exportar conversa para CSV</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        </div>
+
+        {/* Área das Mensagens com Scroll */}
+        <div className="flex-1 min-h-0">
+          <ScrollArea className="h-full p-4">
+            <div className="space-y-4">
+              {messages?.map((message: any) => (
+                <div key={message.id} className={cn('flex items-end gap-2', message.source === 'OPERATOR' ? 'justify-end' : 'justify-start')}>
+                  {/* Avatar do Contato Externo */}
+                  {message.source === 'EXTERNAL' && (
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>C</AvatarFallback>
+                    </Avatar>
+                  )}
+
+                  {/* Balão da Mensagem */}
+                  <div
+                    className={cn('max-w-xs rounded-lg p-3 text-sm',
+                      message.source === 'OPERATOR'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
+                    )}
+                  >
+                    <div className="flex items-end justify-between gap-2">
+                      <div className="flex-1">
+                        {message.content}
+                      </div>
+                      <div className="flex items-center text-xs whitespace-nowrap">
+                        <span className={cn(
+                          message.source === 'OPERATOR'
+                            ? 'text-primary-foreground/70'
+                            : 'text-muted-foreground'
+                        )}>
+                          {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Avatar do Operador */}
-                {message.source === 'OPERATOR' && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                      </TooltipTrigger>
-                      <TooltipContent className="bg-black text-white border-gray-600">
-                        <p>{user?.email}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
-              </div>
-            ))}
+                  {/* Avatar do Operador */}
+                  {message.source === 'OPERATOR' && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>{user?.email?.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-black text-white border-gray-600">
+                          <p>{user?.email}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        </div>
+        
+        {/* Área de informações sobre envio de mensagens */}
+        <div className="p-4 border-t flex-shrink-0">
+          <div className="text-center text-muted-foreground text-sm">
+            <p>Você está vizualizando logs de conversa. Não é possível enviar mensagens por aqui.</p>
           </div>
-        </ScrollArea>
-      </div>
-      
-      {/* Área de informações sobre envio de mensagens */}
-      <div className="p-4 border-t flex-shrink-0">
-        <div className="text-center text-muted-foreground text-sm">
-          <p>Você está vizualizando logs de conversa. Não é possível enviar mensagens por aqui.</p>
         </div>
       </div>
-    </div>
+    </ChatLoadingWrapper>
   );
 }

@@ -4,6 +4,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { DataTable } from '@/components/features/dashboard/data-table';
+import { ChatLoadingWrapper } from '@/components/features/chat';
 
 
 interface User {
@@ -29,12 +30,19 @@ export function UserTable() {
     queryFn: fetchUsers,
   });
 
-  if (isLoading) return <div>Carregando usuários...</div>;
-  if (isError) return <div>Ocorreu um erro ao buscar os usuários.</div>;
-
   return (
-    <div className='py-6'>
-      <DataTable data={users || []} />
-    </div>
+    <ChatLoadingWrapper
+      isLoading={isLoading}
+      error={isError}
+      isEmpty={!users || users.length === 0}
+      type="users"
+      className="py-6"
+      errorMessage="Ocorreu um erro ao buscar os usuários. Tente recarregar a página."
+      emptyMessage="Nenhum usuário encontrado no sistema."
+    >
+      <div className='py-6'>
+        <DataTable data={users || []} />
+      </div>
+    </ChatLoadingWrapper>
   );
 }
