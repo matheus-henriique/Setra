@@ -17,7 +17,7 @@ export class ApiError extends Error {
   export async function api(endpoint: string, options: RequestInit = {}) {
     // Pega o token do localStorage (onde o salvaremos após o login)
     const token = localStorage.getItem('authToken');
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    const apiUrl = "https://setra-api-1.onrender.com";
   
     const defaultHeaders: HeadersInit = {
       'Content-Type': 'application/json',
