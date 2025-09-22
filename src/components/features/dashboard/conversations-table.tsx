@@ -59,6 +59,8 @@ import {
 } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { ChatLoadingWrapper } from "@/components/features/chat"
+import { exportConversationAsPDF, exportConversationAsHTML, exportMultipleConversationsAsPDF, exportMultipleConversationsAsHTML } from "@/lib/pdf-export"
+import { useAuth } from "@/contexts/uth-context"
 
 interface ConversationSummary {
   id: string;
@@ -78,6 +80,7 @@ async function fetchConversations() {
 
 export function ConversationsTable() {
   const router = useRouter();
+  const { user } = useAuth();
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [sorting, setSorting] = React.useState<SortingState>([])
@@ -91,47 +94,75 @@ export function ConversationsTable() {
     queryFn: fetchConversations,
   })
 
-  const handleExportConversation = async (conversationId: string, clientName: string) => {
+  const handleExportConversationAsPDF = async (conversationId: string, clientName: string) => {
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
     try {
       // Buscar dados da conversa
       const conversation = await api(`/conversations/${conversationId}`);
       const messages = await api(`/conversations/${conversationId}/messages`);
       
-      // Criar CSV
-      const headers = ['Data/Hora', 'Origem', 'Operador', 'Mensagem'];
-      const csvData = messages.map((message: any) => [
-        new Date(message.createdAt).toLocaleString('pt-BR'),
-        message.source === 'OPERATOR' ? 'Operador' : 'Cliente',
-        message.operatorSender?.name || '',
-        `"${message.content.replace(/"/g, '""')}"`
-      ]);
+      // Usar a função de exportação PDF
+      exportConversationAsPDF(conversation, messages, user);
       
-      const csvContent = [
-        headers.join(','),
-        ...csvData.map((row: any) => row.join(','))
-      ].join('\n');
-      
-      const fullCsvContent = [
-        `Conversa: ${clientName}`,
-        `Exportado em: ${new Date().toLocaleString('pt-BR')}`,
-        '',
-        csvContent
-      ].join('\n');
-
-      const blob = new Blob([fullCsvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `conversa-${clientName.replace(/\s+/g, '-')}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      toast.success('Conversa exportada com sucesso!');
+      toast.success('Conversa exportada como PDF com sucesso!');
     } catch (error) {
-      console.error('Erro ao exportar conversa:', error);
+      console.error('Erro ao exportar conversa como PDF:', error);
       toast.error('Erro ao exportar conversa');
+    }
+  };
+
+  const handleExportConversationAsHTML = async (conversationId: string, clientName: string) => {
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    try {
+      // Buscar dados da conversa
+      const conversation = await api(`/conversations/${conversationId}`);
+      const messages = await api(`/conversations/${conversationId}/messages`);
+      
+      // Usar a função de exportação HTML
+      exportConversationAsHTML(conversation, messages, user);
+      
+      toast.success('Conversa exportada como HTML com sucesso!');
+    } catch (error) {
+      console.error('Erro ao exportar conversa como HTML:', error);
+      toast.error('Erro ao exportar conversa');
+    }
+  };
+
+  const handleExportAllConversationsAsPDF = () => {
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    try {
+      exportMultipleConversationsAsPDF(conversations, user);
+      toast.success('Todas as conversas foram exportadas como PDF!');
+    } catch (error) {
+      console.error('Erro ao exportar conversas como PDF:', error);
+      toast.error('Erro ao exportar conversas');
+    }
+  };
+
+  const handleExportAllConversationsAsHTML = () => {
+    if (!user) {
+      toast.error('Usuário não autenticado');
+      return;
+    }
+
+    try {
+      exportMultipleConversationsAsHTML(conversations, user);
+      toast.success('Todas as conversas foram exportadas como HTML!');
+    } catch (error) {
+      console.error('Erro ao exportar conversas como HTML:', error);
+      toast.error('Erro ao exportar conversas');
     }
   };
 
@@ -216,16 +247,20 @@ export function ConversationsTable() {
               <span className="sr-only">Abrir menu</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem onClick={() => router.push(`/chats?conversation=${row.original.id}`)}>
               <IconEye className="mr-2 h-4 w-4" />
               Ver Conversa
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => handleExportConversation(row.original.id, row.original.client)}>
+            <DropdownMenuItem onClick={() => handleExportConversationAsPDF(row.original.id, row.original.client)}>
               <IconDownload className="mr-2 h-4 w-4" />
-              Exportar CSV
+              Exportar como PDF
             </DropdownMenuItem>
+            {/* <DropdownMenuItem onClick={() => handleExportConversationAsHTML(row.original.id, row.original.client)}>
+              <IconDownload className="mr-2 h-4 w-4" />
+              Exportar como HTML
+            </DropdownMenuItem> */}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -259,7 +294,7 @@ export function ConversationsTable() {
       isLoading={isLoading}
       error={error}
       isEmpty={!conversations || conversations.length === 0}
-      type="dashboard-conversations"
+      type="conversations"
       className="w-full flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       errorMessage="Erro ao carregar conversas. Tente recarregar a página."
       emptyMessage="Nenhuma conversa encontrada no sistema."
@@ -269,6 +304,45 @@ export function ConversationsTable() {
           <div className="flex items-center space-x-2">
             <h3 className="text-lg font-semibold">Conversas Recentes</h3>
             <Badge variant="secondary">{conversations.length}</Badge>
+          </div>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportAllConversationsAsPDF}
+                    className="flex items-center gap-2"
+                  >
+                    <IconDownload className="h-4 w-4" />
+                    PDF
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Exportar todas as conversas como PDF</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportAllConversationsAsHTML}
+                    className="flex items-center gap-2"
+                  >
+                    <IconDownload className="h-4 w-4" />
+                    HTML
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Exportar todas as conversas como HTML</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
         

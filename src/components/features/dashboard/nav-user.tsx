@@ -83,11 +83,11 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              {/* <DropdownMenuItem>
                 <IconUserCircle />
                 Conta
               </DropdownMenuItem>
-              {/* <DropdownMenuItem>
+              /* <DropdownMenuItem>
                 <IconCreditCard />
                 Faturamento
               </DropdownMenuItem>

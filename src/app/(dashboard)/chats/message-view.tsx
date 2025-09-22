@@ -4,16 +4,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/uth-context';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, Download, MessageSquare, User, Bot } from 'lucide-react';
+import { ArrowLeft, Download, MessageSquare, User, Bot, FileText } from 'lucide-react';
 import { ChatLoadingWrapper } from '@/components/features/chat';
+import { exportConversationAsPDF, exportConversationAsHTML } from '@/lib/pdf-export';
 
 async function fetchMessages(conversationId: string) {
   return api(`/conversations/${conversationId}/messages`);
@@ -44,51 +45,24 @@ export function MessageView({
     enabled: !!conversationId,
   });
 
-  const handleExportConversation = () => {
-    if (!conversation || !messages) return;
+  const handleExportAsPDF = () => {
+    if (!conversation || !messages || !user) return;
     
-    // Cabeçalho do CSV
-    const headers = [
-      'Data/Hora',
-      'Origem',
-      'Operador',
-      'Mensagem'
-    ];
-    
-    // Dados das mensagens
-    const csvData = messages.map((message: any) => [
-      new Date(message.createdAt).toLocaleString('pt-BR'),
-      message.source === 'OPERATOR' ? 'Operador' : 'Cliente',
-      message.operatorSender?.name || '',
-      `"${message.content.replace(/"/g, '""')}"` // Escapa aspas duplas
-    ]);
-    
-    // Combina cabeçalho com dados
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map((row: any) => row.join(','))
-    ].join('\n');
-    
-    // Adiciona informações da conversa no início
-    const [name, phone] = conversation.externalParticipantIdentifier.split(';');
-    const formattedPhone = phone ? `+55 (${phone.slice(2, 4)}) ${phone.slice(4, 9)}-${phone.slice(9)}` : '';
-    const fullCsvContent = [
-      `Conversa: ${formattedPhone} - ${name}`,
-      `Data de Criação: ${new Date(conversation.createdAt).toLocaleString('pt-BR')}`,
-      `Exportado em: ${new Date().toLocaleString('pt-BR')}`,
-      '',
-      csvContent
-    ].join('\n');
+    try {
+      exportConversationAsPDF(conversation, messages, user);
+    } catch (error) {
+      console.error('Erro ao exportar conversa como PDF:', error);
+    }
+  };
 
-    const blob = new Blob([fullCsvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `conversa-${conversation.externalParticipantIdentifier.split(';')[1] || conversation.id}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleExportAsHTML = () => {
+    if (!conversation || !messages || !user) return;
+    
+    try {
+      exportConversationAsHTML(conversation, messages, user);
+    } catch (error) {
+      console.error('Erro ao exportar conversa como HTML:', error);
+    }
   };
 
   if (!conversationId) {
@@ -145,23 +119,43 @@ export function MessageView({
             </div>
             
             {conversationId && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleExportConversation}
-                      className="p-1 h-8 w-8"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent className="bg-black text-white border-gray-600">
-                    <p>Exportar conversa para CSV</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex items-center gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExportAsPDF}
+                        className="p-1 h-8 w-8"
+                      >
+                        <FileText className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-black text-white border-gray-600">
+                      <p>Exportar como PDF</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
+                {/* <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleExportAsHTML}
+                        className="p-1 h-8 w-8"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent className="bg-black text-white border-gray-600">
+                      <p>Exportar como HTML</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider> */}
+              </div>
             )}
           </div>
         </div>
@@ -172,13 +166,6 @@ export function MessageView({
             <div className="space-y-4">
               {messages?.map((message: any) => (
                 <div key={message.id} className={cn('flex items-end gap-2', message.source === 'OPERATOR' ? 'justify-end' : 'justify-start')}>
-                  {/* Avatar do Contato Externo */}
-                  {message.source === 'EXTERNAL' && (
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>C</AvatarFallback>
-                    </Avatar>
-                  )}
-
                   {/* Balão da Mensagem */}
                   <div
                     className={cn('max-w-xs rounded-lg p-3 text-sm',
