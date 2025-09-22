@@ -25,7 +25,7 @@ async function fetchUsers(): Promise<User[]> {
 }
 
 export function UserTable() {
-  const { data: users, isLoading, isError } = useQuery({
+  const { data: users, isLoading, error } = useQuery({
     queryKey: ['users'],
     queryFn: fetchUsers,
   });
@@ -33,7 +33,7 @@ export function UserTable() {
   return (
     <ChatLoadingWrapper
       isLoading={isLoading}
-      error={isError}
+      error={error}
       isEmpty={!users || users.length === 0}
       type="users"
       className="py-6"

@@ -52,7 +52,7 @@ function generateConversationHTML(
     const isOperator = message.source === 'OPERATOR';
     
     return `
-      <div class="message ${isOperator ? 'operator' : 'client'}" style="margin-bottom: 15px; ${isOperator ? 'text-align: right;' : 'text-align: left;'}">
+      <div class="message ${isOperator ? 'operator' : 'client'}" style="margin-bottom: 10px; ${isOperator ? 'text-align: right;' : 'text-align: left;'}">
         <div class="message-header" style="font-size: 12px; color: #666; margin-bottom: 5px;">
           ${isOperator ? 'Operador' : 'Cliente'} - ${date.toLocaleString('pt-BR', {
             timeZone: 'America/Sao_Paulo',
@@ -67,15 +67,17 @@ function generateConversationHTML(
         </div>
         <div class="message-content" style="
           display: inline-block;
-          max-width: 70%;
-          padding: 10px 15px;
-          border-radius: 18px;
+          max-width: 60%;
+          padding: 8px 12px;
+          border-radius: 12px;
           ${isOperator 
             ? 'background-color: #007bff; color: white; margin-left: auto;' 
             : 'background-color: #f1f3f4; color: #333;'
           }
           word-wrap: break-word;
           white-space: pre-wrap;
+          font-size: 14px;
+          line-height: 1.4;
         ">
           ${message.content.replace(/\n/g, '<br>')}
         </div>
@@ -89,7 +91,7 @@ function generateConversationHTML(
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Relatório de Conversa - ${name}</title>
+      <title>Relatório de Conversa - ${formattedPhone} - ${name}</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -108,13 +110,20 @@ function generateConversationHTML(
         }
         .header h1 {
           color: #007bff;
-          margin: 0 0 10px 0;
-          font-size: 24px;
+          margin: 0 0 8px 0;
+          font-size: 28px;
+          font-weight: bold;
         }
         .header h2 {
+          color: #333;
+          margin: 0 0 8px 0;
+          font-size: 20px;
+          font-weight: 600;
+        }
+        .header h3 {
           color: #666;
           margin: 0;
-          font-size: 18px;
+          font-size: 16px;
           font-weight: normal;
         }
         .info-section {
@@ -157,8 +166,8 @@ function generateConversationHTML(
           border: 1px solid #ddd;
           border-top: none;
           border-radius: 0 0 8px 8px;
-          padding: 20px;
-          min-height: 400px;
+          padding: 15px;
+          min-height: 300px;
         }
         .footer {
           margin-top: 40px;
@@ -185,7 +194,8 @@ function generateConversationHTML(
     <body>
       <div class="header">
         <h1>Relatório de Conversa</h1>
-        <h2>Sistema SETRA</h2>
+        <h2>${formattedPhone} - ${name}</h2>
+        <h3>Sistema SETRA</h3>
       </div>
 
       <div class="info-section">
@@ -209,18 +219,6 @@ function generateConversationHTML(
           <div class="info-item">
             <div class="info-label">Data de Criação</div>
             <div class="info-value">${new Date(conversation.createdAt).toLocaleString('pt-BR', {
-              timeZone: 'America/Sao_Paulo',
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit'
-            })}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">Última Atualização</div>
-            <div class="info-value">${new Date(conversation.updatedAt).toLocaleString('pt-BR', {
               timeZone: 'America/Sao_Paulo',
               year: 'numeric',
               month: '2-digit',
@@ -319,26 +317,43 @@ export function exportConversationAsPDF(
 ): void {
   const html = generateConversationHTML(conversation, messages, user);
   
-  // Criar uma nova janela para o PDF
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    console.error('Não foi possível abrir a janela de impressão');
-    return;
-  }
-
-  printWindow.document.write(html);
-  printWindow.document.close();
-
-  // Aguardar o carregamento e imprimir
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.print();
-      // Fechar a janela após um tempo
+  // Criar e baixar arquivo HTML que pode ser convertido para PDF
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const [name, phone] = conversation.externalParticipantIdentifier.split(';');
+  const formattedPhone = phone ? `+55-${phone.slice(2, 4)}-${phone.slice(4, 9)}-${phone.slice(9)}` : '';
+  const cleanName = name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+  const fileName = `Relatorio-Conversa-${formattedPhone}-${cleanName}-${timestamp}.pdf`;
+  
+  // Criar link para download
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.target = '_blank'; // Abrir em nova aba
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  // Abrir o arquivo em nova aba para visualização/impressão
+  const viewWindow = window.open(url, '_blank');
+  if (viewWindow) {
+    // Aguardar o carregamento e mostrar opção de impressão
+    viewWindow.onload = () => {
       setTimeout(() => {
-        printWindow.close();
+        // Mostrar mensagem para o usuário sobre como imprimir
+        if (confirm('Arquivo baixado! Deseja abrir a janela de impressão para salvar como PDF?')) {
+          viewWindow.print();
+        }
       }, 1000);
-    }, 500);
-  };
+    };
+  }
+  
+  // Limpar URL após um tempo
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 10000);
 }
 
 /**
@@ -446,7 +461,7 @@ function generateMultipleConversationsHTML(
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Relatório de Conversas - Sistema SETRA</title>
+      <title>Relatório de Conversas - ${conversations.length} conversas - Sistema SETRA</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -499,7 +514,8 @@ function generateMultipleConversationsHTML(
     <body>
       <div class="header">
         <h1>Relatório de Conversas</h1>
-        <h2>Sistema SETRA</h2>
+        <h2>${conversations.length} conversas encontradas</h2>
+        <h3>Sistema SETRA</h3>
       </div>
 
       <div class="summary">
@@ -543,23 +559,40 @@ export function exportMultipleConversationsAsPDF(
 ): void {
   const html = generateMultipleConversationsHTML(conversations, user);
   
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    console.error('Não foi possível abrir a janela de impressão');
-    return;
-  }
-
-  printWindow.document.write(html);
-  printWindow.document.close();
-
-  printWindow.onload = () => {
-    setTimeout(() => {
-      printWindow.print();
+  // Criar e baixar arquivo HTML que pode ser convertido para PDF
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const fileName = `Relatorio-Multiplas-Conversas-${conversations.length}-conversas-${timestamp}.pdf`;
+  
+  // Criar link para download
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.target = '_blank'; // Abrir em nova aba
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  // Abrir o arquivo em nova aba para visualização/impressão
+  const viewWindow = window.open(url, '_blank');
+  if (viewWindow) {
+    // Aguardar o carregamento e mostrar opção de impressão
+    viewWindow.onload = () => {
       setTimeout(() => {
-        printWindow.close();
+        // Mostrar mensagem para o usuário sobre como imprimir
+        if (confirm('Arquivo baixado! Deseja abrir a janela de impressão para salvar como PDF?')) {
+          viewWindow.print();
+        }
       }, 1000);
-    }, 500);
-  };
+    };
+  }
+  
+  // Limpar URL após um tempo
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 10000);
 }
 
 /**

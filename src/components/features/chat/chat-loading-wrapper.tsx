@@ -6,7 +6,7 @@ import { ChatLoading } from './chat-loading';
 interface ChatLoadingWrapperProps {
   isLoading: boolean;
   children: ReactNode;
-  type?: 'conversations' | 'messages' | 'conversation-detail';
+  type?: 'conversations' | 'messages' | 'conversation-detail' | 'users';
   className?: string;
   loadingMessage?: string;
   error?: Error | null;
